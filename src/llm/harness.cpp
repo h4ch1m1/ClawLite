@@ -48,7 +48,6 @@ RunResult AgentHarness::runTurn(
         m_memory->ingest(userMsg);
     }
 
-    int roundCount = 0;
     int toolCallCount = 0;
     int totalTokens = 0;
     LlmResponse lastResponse;
@@ -132,6 +131,7 @@ RunResult AgentHarness::runTurn(
         result.error = "agent harness entered error state";
     }
 
+    result.totalTurns = toolCallCount;
     result.totalTurns = toolCallCount;
     result.totalTokens = totalTokens;
     m_state = AgentState::Idle;

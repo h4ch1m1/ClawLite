@@ -152,18 +152,10 @@ void ToolExecutor::registerTool(const Tool& tool) {
 void ToolExecutor::registerBuiltinTools() {
     Tool hello;
     hello.name = "hello";
-    hello.description = "Return a friendly greeting. Use this when the user message starts with or contains a greeting.";
+    hello.description = "Return a friendly greeting.";
     hello.parametersJson = R"({"type":"object","properties":{}})";
     hello.handler = [](const std::string&) {
-        static const std::string replies[] = {
-            "Hello!",
-            "你好！",
-            "こんにちは！",
-            "안녕하세요！",
-            "Bonjour！",
-            "¡Hola！",
-            "Hallo！"
-        };
+        static const std::string replies[] = {"Hello!", "Hi!", "Bonjour!", "Hola!", "Hallo!"};
         static thread_local size_t index = 0;
         const std::string& reply = replies[index % (sizeof(replies) / sizeof(replies[0]))];
         ++index;
@@ -198,7 +190,6 @@ ToolResult ToolExecutor::execute(const ToolCall& toolCall) {
     if (it == m_tools.end()) {
         return {false, "", "tool not found: " + toolCall.name};
     }
-
     if (!it->second.handler) {
         return {false, "", "tool has no handler: " + toolCall.name};
     }
@@ -231,12 +222,8 @@ size_t ToolExecutor::size() const {
 
 std::string toolCalculator(const std::string& argsJson) {
     std::string expr = extractJsonString(argsJson, "expr");
-    if (expr.empty()) {
-        expr = extractJsonString(argsJson, "expression");
-    }
-    if (expr.empty()) {
-        throw std::runtime_error("calculator requires string field 'expr'");
-    }
+    if (expr.empty()) expr = extractJsonString(argsJson, "expression");
+    if (expr.empty()) throw std::runtime_error("calculator requires string field 'expr'");
     return formatDouble(ExpressionParser(expr).parse());
 }
 
@@ -257,22 +244,15 @@ std::string toolCurrentTime(const std::string&) {
 
 std::string toolReadFile(const std::string& argsJson) {
     std::string path = extractJsonString(argsJson, "path");
-    if (path.empty()) {
-        throw std::runtime_error("read_file requires string field 'path'");
-    }
+    if (path.empty()) throw std::runtime_error("read_file requires string field 'path'");
 
     std::ifstream in(path, std::ios::binary);
-    if (!in) {
-        throw std::runtime_error("failed to open file: " + path);
-    }
+    if (!in) throw std::runtime_error("failed to open file: " + path);
 
     constexpr std::streamsize kMaxBytes = 10 * 1024;
-    std::string content;
-    content.resize(static_cast<size_t>(kMaxBytes));
+    std::string content(static_cast<size_t>(kMaxBytes), '\0');
     in.read(&content[0], kMaxBytes);
-    std::streamsize readBytes = in.gcount();
-    content.resize(static_cast<size_t>(readBytes));
-
+    content.resize(static_cast<size_t>(in.gcount()));
     if (in.peek() != EOF) {
         content += "\n[truncated after 10240 bytes]";
     }
