@@ -63,6 +63,7 @@ openclaw-main/
 .venv/
 benchmark_results*.csv
 benchmark_plots*/
+.clawlite_gui.pid
 
 # OS
 .DS_Store

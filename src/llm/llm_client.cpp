@@ -221,6 +221,14 @@ std::string trimTrailingSlash(std::string url) {
     return url;
 }
 
+std::string chatCompletionsEndpoint(const std::string& baseUrl) {
+    std::string base = trimTrailingSlash(baseUrl);
+    if (base.size() >= 3 && base.substr(base.size() - 3) == "/v1") {
+        return base + "/chat/completions";
+    }
+    return base + "/v1/chat/completions";
+}
+
 std::string quoteShellArg(const std::string& value) {
 #ifdef _WIN32
     std::string out = "\"";
@@ -288,19 +296,13 @@ LlmResponse LlmClient::chat(
     LlmResponse resp;
     if (m_config.mockMode) {
         std::string lastUser;
-        bool hasToolResult = false;
-        std::string toolResult;
         for (const auto& msg : messages) {
             if (msg.role == Role::User) lastUser = msg.content;
-            if (msg.role == Role::Tool) {
-                hasToolResult = true;
-                toolResult = msg.content;
-            }
         }
         resp.success = true;
         resp.finishReason = "stop";
-        if (hasToolResult) {
-            resp.content = toolResult;
+        if (!messages.empty() && messages.back().role == Role::Tool) {
+            resp.content = messages.back().content;
             return resp;
         }
         if (lastUser.find("2 + 3") != std::string::npos ||
@@ -335,7 +337,7 @@ LlmResponse LlmClient::chat(
         out << requestBody;
     }
 
-    std::string endpoint = trimTrailingSlash(m_config.baseUrl) + "/v1/chat/completions";
+    std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
     cmd << "curl -sS --max-time " << (m_config.timeoutMs / 1000)
         << " -X POST " << quoteShellArg(endpoint)
@@ -380,7 +382,7 @@ LlmResponse LlmClient::chatStream(
         out << requestBody;
     }
 
-    std::string endpoint = trimTrailingSlash(m_config.baseUrl) + "/v1/chat/completions";
+    std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
     cmd << "curl -sS --no-buffer --max-time " << (m_config.timeoutMs / 1000)
         << " -X POST " << quoteShellArg(endpoint)
