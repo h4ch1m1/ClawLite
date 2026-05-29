@@ -11,6 +11,7 @@ extern int run_search_tests();
 extern int run_session_store_tests();
 extern int run_prompt_builder_tests();
 extern int run_llm_tests();
+extern int run_compaction_tests();
 
 int main() {
     std::cout << "========== ClawLite Tests ==========\n\n" << std::flush;
@@ -28,6 +29,8 @@ int main() {
     std::cout << "[DEBUG] search tests done, failures=" << failures << "\n" << std::flush;
     failures += run_session_store_tests();
     std::cout << "[DEBUG] session tests done, failures=" << failures << "\n" << std::flush;
+    failures += run_compaction_tests();
+    std::cout << "[DEBUG] compaction tests done, failures=" << failures << "\n" << std::flush;
     failures += run_prompt_builder_tests();
     std::cout << "[DEBUG] prompt tests done, failures=" << failures << "\n" << std::flush;
     failures += run_llm_tests();

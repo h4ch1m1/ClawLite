@@ -3,6 +3,8 @@
 #include "skill/skill_registry.h"
 #include <algorithm>
 #include <sstream>
+#include <memory>
+#include <unordered_map>
 
 namespace clawlite {
 namespace {
@@ -44,6 +46,36 @@ static size_t promptLength(const std::vector<SkillEntry>& skills, size_t count, 
     }
     prompt += "</available_skills>\n";
     return prompt.size();
+}
+
+struct TrieNode {
+    std::unordered_map<char, std::unique_ptr<TrieNode>> children;
+    bool terminal = false;
+    std::string word;
+};
+
+static void trieInsert(TrieNode& root, const std::string& word) {
+    TrieNode* node = &root;
+    for (char ch : word) {
+        auto& child = node->children[ch];
+        if (!child) child = std::make_unique<TrieNode>();
+        node = child.get();
+    }
+    node->terminal = true;
+    node->word = word;
+}
+
+static void trieCollect(const TrieNode& node, std::vector<std::string>& out, size_t limit) {
+    if (out.size() >= limit) return;
+    if (node.terminal) out.push_back(node.word);
+    std::vector<char> keys;
+    keys.reserve(node.children.size());
+    for (const auto& pair : node.children) keys.push_back(pair.first);
+    std::sort(keys.begin(), keys.end());
+    for (char key : keys) {
+        trieCollect(*node.children.at(key), out, limit);
+        if (out.size() >= limit) return;
+    }
 }
 
 } // namespace
@@ -89,6 +121,25 @@ const SkillEntry* SkillRegistry::findSkill(const std::string& name) const {
     auto it = m_skills.find(name);
     if (it != m_skills.end()) return &it->second;
     return nullptr;
+}
+
+std::vector<std::string> SkillRegistry::completeSkillNames(const std::string& prefix,
+                                                           size_t limit) const {
+    TrieNode root;
+    for (const auto& pair : m_skills) {
+        trieInsert(root, pair.first);
+    }
+
+    const TrieNode* node = &root;
+    for (char ch : prefix) {
+        auto it = node->children.find(ch);
+        if (it == node->children.end()) return {};
+        node = it->second.get();
+    }
+
+    std::vector<std::string> result;
+    trieCollect(*node, result, limit);
+    return result;
 }
 
 std::string SkillRegistry::buildSkillPrompt(int charBudget) const {
@@ -157,12 +208,19 @@ int SkillRegistry::binarySearchPromptLimit(
     const std::vector<SkillEntry>& sorted,
     int charBudget
 ) {
+    std::vector<size_t> prefix(sorted.size() + 1, 0);
+    const size_t wrapper = std::string("<available_skills>\n").size()
+        + std::string("</available_skills>\n").size();
+    for (size_t i = 0; i < sorted.size(); ++i) {
+        prefix[i + 1] = prefix[i] + formatSkillXmlLocal(sorted[i], true).size();
+    }
+
     int lo = 0;
     int hi = static_cast<int>(sorted.size());
 
     while (lo < hi) {
         int mid = lo + (hi - lo + 1) / 2;
-        if (static_cast<int>(promptLength(sorted, static_cast<size_t>(mid), true)) <= charBudget) {
+        if (static_cast<int>(wrapper + prefix[static_cast<size_t>(mid)]) <= charBudget) {
             lo = mid;
         } else {
             hi = mid - 1;

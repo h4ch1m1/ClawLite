@@ -60,6 +60,13 @@ public:
         int topK = 10
     );
 
+    // Hand-written inverted index search used for coursework comparison with
+    // SQLite FTS5. It builds a term -> posting-list map over the stored chunks.
+    std::vector<SearchResult> invertedSearch(
+        const std::string& query,
+        int topK = 10
+    );
+
 private:
     MemoryStore& m_store;
     std::unique_ptr<IEmbeddingProvider> m_embedding;

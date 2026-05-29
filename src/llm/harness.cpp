@@ -18,6 +18,12 @@ AgentHarness::AgentHarness(
     IContextEngine* memory
 ) : m_llm(llm), m_tools(tools), m_memory(memory) {}
 
+void AgentHarness::resetConversation() {
+    m_messages.clear();
+    m_systemPrompt.clear();
+    m_state = AgentState::Idle;
+}
+
 RunResult AgentHarness::runTurn(
     const std::string& systemPrompt,
     const std::vector<Message>& history,
@@ -33,21 +39,25 @@ RunResult AgentHarness::runTurn(
 
     m_state = AgentState::Idle;
 
-    std::vector<Message> messages;
     std::string effectiveSystemPrompt = plan.prompt.systemPromptOverride.empty()
         ? systemPrompt
         : plan.prompt.systemPromptOverride;
-    if (!effectiveSystemPrompt.empty()) {
-        messages.push_back(Message::system(effectiveSystemPrompt));
+    if (m_messages.empty() || effectiveSystemPrompt != m_systemPrompt || !history.empty()) {
+        m_messages.clear();
+        m_systemPrompt = effectiveSystemPrompt;
+        if (!effectiveSystemPrompt.empty()) {
+            m_messages.push_back(Message::system(effectiveSystemPrompt));
+        }
+        m_messages.insert(m_messages.end(), history.begin(), history.end());
     }
-    messages.insert(messages.end(), history.begin(), history.end());
     Message userMsg = Message::user(userInput);
-    messages.push_back(userMsg);
+    m_messages.push_back(userMsg);
 
     if (m_memory) {
         m_memory->ingest(userMsg);
     }
 
+    int roundCount = 0;
     int toolCallCount = 0;
     int totalTokens = 0;
     LlmResponse lastResponse;
@@ -59,7 +69,7 @@ RunResult AgentHarness::runTurn(
                 break;
 
             case AgentState::Thinking: {
-                lastResponse = m_llm.chat(messages, m_tools.getAllTools());
+                lastResponse = m_llm.chat(m_messages, m_tools.getAllTools());
                 if (!lastResponse.success) {
                     result.status = RunStatus::Error;
                     result.error = lastResponse.error;
@@ -71,7 +81,7 @@ RunResult AgentHarness::runTurn(
 
                 Message assistantMsg = Message::assistant(lastResponse.content);
                 assistantMsg.toolCalls = lastResponse.toolCalls;
-                messages.push_back(assistantMsg);
+                m_messages.push_back(assistantMsg);
                 if (m_memory) {
                     m_memory->ingest(assistantMsg);
                 }
@@ -94,7 +104,7 @@ RunResult AgentHarness::runTurn(
                 }
                 ++roundCount;
 
-                const auto toolCalls = messages.back().toolCalls;
+                const auto toolCalls = m_messages.back().toolCalls;
                 toolCallCount += static_cast<int>(toolCalls.size());
                 for (const auto& tc : toolCalls) {
                     ToolResult toolResult = m_tools.execute(tc);
@@ -103,7 +113,7 @@ RunResult AgentHarness::runTurn(
                         tc.name,
                         formatToolResult(toolResult)
                     );
-                    messages.push_back(toolMsg);
+                    m_messages.push_back(toolMsg);
                     if (m_memory) {
                         m_memory->ingest(toolMsg);
                     }

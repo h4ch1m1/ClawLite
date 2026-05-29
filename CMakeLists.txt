@@ -94,6 +94,18 @@ if(WIN32)
     target_link_libraries(clawlite PRIVATE ws2_32)
 endif()
 
+add_executable(clawlite_gui src/gui_server.cpp)
+target_include_directories(clawlite_gui PRIVATE third_party/httplib)
+target_link_libraries(clawlite_gui PRIVATE
+    clawlite_core
+    clawlite_skill
+    clawlite_memory
+    clawlite_llm
+)
+if(WIN32)
+    target_link_libraries(clawlite_gui PRIVATE ws2_32)
+endif()
+
 # ── 测试 ──────────────────────────────────────────────────
 
 enable_testing()
@@ -106,6 +118,7 @@ set(TEST_SOURCES
     tests/test_chunker.cpp
     tests/test_search.cpp
     tests/test_session_store.cpp
+    tests/test_compaction.cpp
     tests/test_prompt_builder.cpp
     tests/test_llm.cpp
 )

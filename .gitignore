@@ -60,6 +60,9 @@ CTestTestfile.cmake
 # Project Specific
 ClawLite.zip
 openclaw-main/
+.venv/
+benchmark_results*.csv
+benchmark_plots*/
 
 # OS
 .DS_Store

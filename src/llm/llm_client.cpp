@@ -286,6 +286,37 @@ LlmResponse LlmClient::chat(
     const std::vector<Tool>& tools
 ) {
     LlmResponse resp;
+    if (m_config.mockMode) {
+        std::string lastUser;
+        bool hasToolResult = false;
+        std::string toolResult;
+        for (const auto& msg : messages) {
+            if (msg.role == Role::User) lastUser = msg.content;
+            if (msg.role == Role::Tool) {
+                hasToolResult = true;
+                toolResult = msg.content;
+            }
+        }
+        resp.success = true;
+        resp.finishReason = "stop";
+        if (hasToolResult) {
+            resp.content = toolResult;
+            return resp;
+        }
+        if (lastUser.find("2 + 3") != std::string::npos ||
+            lastUser.find("calculator") != std::string::npos) {
+            ToolCall call;
+            call.id = "mock_call_calculator";
+            call.name = "calculator";
+            call.arguments = R"json({"expr":"2 + 3 * (4 - 1)"})json";
+            resp.toolCalls.push_back(call);
+            resp.finishReason = "tool_calls";
+            return resp;
+        }
+        resp.content = "Mock LLM response: " + lastUser;
+        return resp;
+    }
+
     if (m_config.apiKey.empty()) {
         resp.success = false;
         resp.error = "missing API key";

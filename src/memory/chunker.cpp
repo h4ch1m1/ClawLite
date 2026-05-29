@@ -7,6 +7,21 @@
 #include <functional>
 
 namespace clawlite {
+namespace {
+
+int utf8Codepoints(const std::string& text) {
+    int count = 0;
+    for (unsigned char ch : text) {
+        if ((ch & 0xC0) != 0x80) ++count;
+    }
+    return count;
+}
+
+int lineCost(const std::string& line, const ChunkerConfig& config) {
+    return (config.cjkCharacterMode ? utf8Codepoints(line) : static_cast<int>(line.size())) + 1;
+}
+
+} // namespace
 
 std::vector<MemoryChunk> Chunker::chunkMarkdown(
     const std::string& filePath,
@@ -77,7 +92,7 @@ std::vector<MemoryChunk> Chunker::chunkMarkdown(
         int charCount = 0;
         // 扩展窗口右边界
         while (end < (int)lines.size() && charCount < maxChars) {
-            charCount += (int)lines[end].size() + 1;
+            charCount += lineCost(lines[end], config);
             end++;
         }
         // 拼接文本
@@ -96,7 +111,7 @@ std::vector<MemoryChunk> Chunker::chunkMarkdown(
         // 滑动窗口前进
         int stepUsed = 0;
         while (stepUsed < stepChars && start < end) {
-            stepUsed += (int)lines[start].size() + 1;
+            stepUsed += lineCost(lines[start], config);
             start++;
         }
         // 防止无限循环：至少前进 1 行

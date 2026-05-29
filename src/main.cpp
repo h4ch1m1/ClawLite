@@ -56,9 +56,11 @@ int main(int argc, char* argv[]) {
     const char* apiKey = std::getenv("CLAWLITE_API_KEY");
     const char* baseUrl = std::getenv("CLAWLITE_BASE_URL");
     const char* model = std::getenv("CLAWLITE_MODEL");
+    const char* mock = std::getenv("CLAWLITE_MOCK_LLM");
     llmConfig.apiKey = apiKey ? apiKey : "";
     llmConfig.baseUrl = baseUrl ? baseUrl : "https://api.deepseek.com";
     llmConfig.model = model ? model : "deepseek-chat";
+    llmConfig.mockMode = mock && std::string(mock) == "1";
     LlmClient llm(llmConfig);
 
     // C: 工具执行器

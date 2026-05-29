@@ -108,6 +108,27 @@ void testHarnessReturnsLlmError() {
     std::cout << "  [PASS] testHarnessReturnsLlmError\n";
 }
 
+void testMockLlmToolLoopAndIncrementalHistory() {
+    LlmConfig config;
+    config.mockMode = true;
+    LlmClient llm(config);
+
+    ToolExecutor tools;
+    tools.registerBuiltinTools();
+    AgentHarness harness(llm, tools, nullptr);
+
+    RunResult first = harness.runTurn("system", {}, "Use calculator for 2 + 3 * (4 - 1)");
+    TEST_ASSERT(first.status == RunStatus::Success);
+    TEST_ASSERT(first.reply == "11");
+    size_t afterFirst = harness.messages().size();
+
+    RunResult second = harness.runTurn("system", {}, "hello");
+    TEST_ASSERT(second.status == RunStatus::Success);
+    TEST_ASSERT(harness.messages().size() > afterFirst);
+
+    std::cout << "  [PASS] testMockLlmToolLoopAndIncrementalHistory\n";
+}
+
 int run_llm_tests() {
     std::cout << "LLM Runtime Tests:\n";
     RESET_FAILURES();
@@ -117,6 +138,7 @@ int run_llm_tests() {
     testCalculatorTool();
     testReadFileTool();
     testHarnessReturnsLlmError();
+    testMockLlmToolLoopAndIncrementalHistory();
     int f = GET_FAILURES();
     if (f == 0) std::cout << "All LLM runtime tests passed.\n";
     else std::cout << f << " LLM runtime test(s) failed.\n";

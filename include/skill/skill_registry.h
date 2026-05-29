@@ -34,6 +34,10 @@ public:
     // 按 name 查找技能
     const SkillEntry* findSkill(const std::string& name) const;
 
+    // Trie prefix completion for `/skills <prefix>`.
+    std::vector<std::string> completeSkillNames(const std::string& prefix,
+                                                size_t limit = 20) const;
+
     // 构建技能提示词（XML 格式，带字符预算裁剪）
     // 参考：openclaw-main/src/agents/skills/workspace.ts:resolveWorkspaceSkillPromptState
     std::string buildSkillPrompt(int charBudget = 18000) const;

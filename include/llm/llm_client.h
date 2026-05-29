@@ -23,6 +23,7 @@ struct LlmConfig {
     double temperature = 0.7;
     int maxTokens = 4096;
     int timeoutMs = 60000;                             // 请求超时
+    bool mockMode = false;                             // local demo path, no external API
 };
 
 // 流式回调：每收到一个 token 片段时调用

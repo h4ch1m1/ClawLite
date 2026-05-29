@@ -31,6 +31,12 @@ public:
         const CompactionConfig& config = {}
     );
 
+    // Baseline for benchmarks: drop oldest messages until the token budget fits.
+    static CompactResult truncateBaseline(
+        std::vector<Message>& messages,
+        int targetTokens
+    );
+
     // 计算消息列表的总 token 数
     static int countTotalTokens(const std::vector<Message>& messages);
 

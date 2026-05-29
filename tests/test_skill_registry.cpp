@@ -63,12 +63,30 @@ void testBinarySearchPromptLimit() {
     std::cout << "  [PASS] testBinarySearchPromptLimit\n";
 }
 
+void testTriePrefixCompletion() {
+    SkillRegistry registry;
+    for (const auto& name : {"calculator", "calendar", "file-reader", "hello"}) {
+        SkillEntry entry;
+        entry.definition.name = name;
+        entry.definition.description = "desc";
+        entry.definition.filePath = std::string("skills/") + name + "/SKILL.md";
+        registry.registerSkill(entry);
+    }
+
+    auto matches = registry.completeSkillNames("cal", 10);
+    TEST_ASSERT(matches.size() == 2);
+    TEST_ASSERT(matches[0] == "calculator");
+    TEST_ASSERT(matches[1] == "calendar");
+    std::cout << "  [PASS] testTriePrefixCompletion\n";
+}
+
 int run_skill_registry_tests() {
     std::cout << "Skill Registry Tests:\n";
     RESET_FAILURES();
     testRegisterAndFind();
     testBuildSkillPrompt();
     testBinarySearchPromptLimit();
+    testTriePrefixCompletion();
     int f = GET_FAILURES();
     if (f == 0) std::cout << "All skill registry tests passed.\n";
     else std::cout << f << " skill registry test(s) failed.\n";
