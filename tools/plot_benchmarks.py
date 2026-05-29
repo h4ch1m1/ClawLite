@@ -20,10 +20,7 @@ def main():
     parser.add_argument("--out-dir", default="benchmark_plots")
     args = parser.parse_args()
 
-    try:
-        import matplotlib.pyplot as plt
-    except ModuleNotFoundError:
-        plt = None
+    import matplotlib.pyplot as plt
 
     rows = []
     with open(args.csv_path, newline="", encoding="utf-8") as f:
@@ -33,33 +30,6 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for name, cases in GROUPS.items():
-        if plt is None:
-            svg = [
-                '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450">',
-                f'<text x="30" y="30" font-size="20">{name}</text>',
-                '<text x="30" y="420" font-size="12">Install matplotlib for PNG output; this SVG fallback proves the plot pipeline.</text>',
-            ]
-            y = 70
-            colors = ["#2563eb", "#dc2626", "#16a34a"]
-            for idx, case in enumerate(cases):
-                data = [(int(r["n"]), float(r["median_ms"])) for r in rows if r["case"] == case]
-                data.sort()
-                if not data:
-                    continue
-                max_n = max(x for x, _ in data)
-                max_y = max(yv for _, yv in data) or 1.0
-                points = []
-                for x, value in data:
-                    px = 80 + (x / max_n) * 650
-                    py = y + 80 - (value / max_y) * 70
-                    points.append(f"{px:.1f},{py:.1f}")
-                svg.append(f'<polyline fill="none" stroke="{colors[idx % len(colors)]}" stroke-width="2" points="{" ".join(points)}"/>')
-                svg.append(f'<text x="80" y="{y + 105}" font-size="12" fill="{colors[idx % len(colors)]}">{case}</text>')
-                y += 120
-            svg.append("</svg>")
-            (out_dir / f"{name}.svg").write_text("\n".join(svg), encoding="utf-8")
-            continue
-
         fig, ax = plt.subplots(figsize=(8, 4.5))
         for case in cases:
             data = [(int(r["n"]), float(r["median_ms"])) for r in rows if r["case"] == case]

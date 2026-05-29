@@ -36,7 +36,7 @@ struct Json {
         return it == objectValue.end() ? nullJson : it->second;
     }
 
-    std::string asString(const std::string& fallback = "") const {
+    std::string asString(const std::string& defaultValue = "") const {
         if (type == Type::String) return stringValue;
         if (type == Type::Number) {
             std::ostringstream oss;
@@ -44,12 +44,12 @@ struct Json {
             return oss.str();
         }
         if (type == Type::Bool) return boolValue ? "true" : "false";
-        return fallback;
+        return defaultValue;
     }
 
-    int asInt(int fallback = 0) const {
+    int asInt(int defaultValue = 0) const {
         if (type == Type::Number) return static_cast<int>(numberValue);
-        return fallback;
+        return defaultValue;
     }
 };
 
@@ -294,34 +294,19 @@ LlmResponse LlmClient::chat(
     const std::vector<Tool>& tools
 ) {
     LlmResponse resp;
-    if (m_config.mockMode) {
-        std::string lastUser;
-        for (const auto& msg : messages) {
-            if (msg.role == Role::User) lastUser = msg.content;
-        }
-        resp.success = true;
-        resp.finishReason = "stop";
-        if (!messages.empty() && messages.back().role == Role::Tool) {
-            resp.content = messages.back().content;
-            return resp;
-        }
-        if (lastUser.find("2 + 3") != std::string::npos ||
-            lastUser.find("calculator") != std::string::npos) {
-            ToolCall call;
-            call.id = "mock_call_calculator";
-            call.name = "calculator";
-            call.arguments = R"json({"expr":"2 + 3 * (4 - 1)"})json";
-            resp.toolCalls.push_back(call);
-            resp.finishReason = "tool_calls";
-            return resp;
-        }
-        resp.content = "Mock LLM response: " + lastUser;
-        return resp;
-    }
-
     if (m_config.apiKey.empty()) {
         resp.success = false;
         resp.error = "missing API key";
+        return resp;
+    }
+    if (m_config.baseUrl.empty()) {
+        resp.success = false;
+        resp.error = "missing base URL";
+        return resp;
+    }
+    if (m_config.model.empty()) {
+        resp.success = false;
+        resp.error = "missing model";
         return resp;
     }
 
@@ -367,6 +352,16 @@ LlmResponse LlmClient::chatStream(
     if (m_config.apiKey.empty()) {
         resp.success = false;
         resp.error = "missing API key";
+        return resp;
+    }
+    if (m_config.baseUrl.empty()) {
+        resp.success = false;
+        resp.error = "missing base URL";
+        return resp;
+    }
+    if (m_config.model.empty()) {
+        resp.success = false;
+        resp.error = "missing model";
         return resp;
     }
 

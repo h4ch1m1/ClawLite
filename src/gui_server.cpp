@@ -74,7 +74,7 @@ int main() {
         PromptBuildContext ctx;
         ctx.basePrompt = "You are ClawLite, a helpful AI assistant.";
         ctx.workspaceDir = ".";
-        ctx.model = config.mockMode ? "mock" : config.model;
+        ctx.model = config.model;
         ctx.os = "windows";
         std::string prompt = PromptBuilder::buildSystemPrompt(ctx, skills, nullptr);
         auto result = harness.runTurn(prompt, {}, req.body);
