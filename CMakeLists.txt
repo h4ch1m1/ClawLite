@@ -35,6 +35,7 @@ target_compile_definitions(sqlite3 PRIVATE
 add_library(clawlite_core STATIC
     src/core/types.cpp
     src/core/event_bus.cpp
+    src/core/config.cpp
 )
 target_include_directories(clawlite_core PUBLIC include)
 

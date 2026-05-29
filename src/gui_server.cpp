@@ -1,4 +1,5 @@
 #include "httplib.h"
+#include "core/config.h"
 #include "llm/harness.h"
 #include "llm/llm_client.h"
 #include "llm/prompt_builder.h"
@@ -6,7 +7,6 @@
 #include "skill/skill_filter.h"
 #include "skill/skill_registry.h"
 
-#include <cstdlib>
 #include <iostream>
 
 using namespace clawlite;
@@ -61,14 +61,7 @@ int main() {
     ToolExecutor tools;
     tools.registerBuiltinTools();
 
-    LlmConfig config;
-    config.mockMode = true;
-    if (const char* key = std::getenv("CLAWLITE_API_KEY")) {
-        config.apiKey = key;
-        config.mockMode = false;
-    }
-    if (const char* base = std::getenv("CLAWLITE_BASE_URL")) config.baseUrl = base;
-    if (const char* model = std::getenv("CLAWLITE_MODEL")) config.model = model;
+    LlmConfig config = loadAppConfig().llm;
 
     LlmClient llm(config);
     AgentHarness harness(llm, tools, nullptr);

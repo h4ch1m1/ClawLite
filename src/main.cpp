@@ -2,6 +2,7 @@
 // 交互式 REPL 循环
 
 #include "core/types.h"
+#include "core/config.h"
 #include "skill/skill_registry.h"
 #include "skill/skill_filter.h"
 #include "memory/context_engine.h"
@@ -9,7 +10,6 @@
 #include "llm/harness.h"
 #include "llm/tool_executor.h"
 #include "llm/prompt_builder.h"
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -52,15 +52,7 @@ int main(int argc, char* argv[]) {
     // auto memory = ...;
 
     // C: LLM 客户端
-    LlmConfig llmConfig;
-    const char* apiKey = std::getenv("CLAWLITE_API_KEY");
-    const char* baseUrl = std::getenv("CLAWLITE_BASE_URL");
-    const char* model = std::getenv("CLAWLITE_MODEL");
-    const char* mock = std::getenv("CLAWLITE_MOCK_LLM");
-    llmConfig.apiKey = apiKey ? apiKey : "";
-    llmConfig.baseUrl = baseUrl ? baseUrl : "https://api.deepseek.com";
-    llmConfig.model = model ? model : "deepseek-chat";
-    llmConfig.mockMode = mock && std::string(mock) == "1";
+    LlmConfig llmConfig = loadAppConfig().llm;
     LlmClient llm(llmConfig);
 
     // C: 工具执行器
