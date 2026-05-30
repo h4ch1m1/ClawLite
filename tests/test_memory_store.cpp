@@ -1,17 +1,13 @@
-// ClawLite — SQLite 存储层测试
-// TODO: B 同学补充测试用例
-
 #include "memory/memory_store.h"
+#include "memory/lru_cache.h"
 #include "test_helpers.h"
 #include <iostream>
-#include <cstdio>
 
 using namespace clawlite;
 
 void testOpenClose() {
     MemoryStore store;
-    bool ok = store.open(":memory:");
-    TEST_ASSERT(ok);
+    TEST_ASSERT(store.open(":memory:"));
     store.close();
     std::cout << "  [PASS] testOpenClose\n";
 }
@@ -53,6 +49,10 @@ void testChunkCrud() {
     chunk.endLine = 10;
     chunk.text = "Hello world";
     chunk.hash = "def456";
+    chunk.id = "chunk-def456";
+    chunk.headingPath = "Doc > Intro";
+    chunk.depth = 2;
+    chunk.tokenCost = 3;
 
     store.upsertChunk(chunk);
     TEST_ASSERT(store.chunkCount() == 1);
@@ -61,6 +61,14 @@ void testChunkCrud() {
     TEST_ASSERT(chunks.size() == 1);
     if (!chunks.empty()) {
         TEST_ASSERT(chunks[0].text == "Hello world");
+        TEST_ASSERT(chunks[0].headingPath == "Doc > Intro");
+        TEST_ASSERT(chunks[0].tokenCost == 3);
+    }
+
+    auto byId = store.getChunkById("chunk-def456");
+    TEST_ASSERT(byId.has_value());
+    if (byId.has_value()) {
+        TEST_ASSERT(byId->headingPath == "Doc > Intro");
     }
 
     store.removeChunksByFile("test.md");
@@ -71,9 +79,29 @@ void testChunkCrud() {
 }
 
 void testFtsSearch() {
-    // TODO: 测试 FTS5 全文搜索
-    // 需要 SQLite 编译时启用 FTS5
-    std::cout << "  [SKIP] testFtsSearch (需要 FTS5 支持)\n";
+    MemoryStore store;
+    store.open(":memory:");
+
+    MemoryChunk chunk;
+    chunk.path = "fts.md";
+    chunk.startLine = 1;
+    chunk.endLine = 1;
+    chunk.text = "needle haystack";
+    chunk.hash = "fts1";
+    chunk.id = "fts1";
+    chunk.headingPath = "Search";
+    store.upsertChunk(chunk);
+
+    auto results = store.ftsSearch("needle", 5);
+    TEST_ASSERT(!results.empty());
+    TEST_ASSERT(results[0].first == "fts1");
+    auto detailed = store.ftsSearchDetailed("needle", 5);
+    TEST_ASSERT(!detailed.empty());
+    TEST_ASSERT(detailed[0].chunkId == "fts1");
+    TEST_ASSERT(detailed[0].headingPath == "Search");
+
+    store.close();
+    std::cout << "  [PASS] testFtsSearch\n";
 }
 
 void testEmbeddingCache() {
@@ -94,6 +122,18 @@ void testEmbeddingCache() {
     std::cout << "  [PASS] testEmbeddingCache\n";
 }
 
+void testLruCacheEvictsLeastRecentlyUsed() {
+    LruCache<std::string, int> cache(2);
+    cache.put("a", 1);
+    cache.put("b", 2);
+    TEST_ASSERT(cache.get("a").value_or(0) == 1);
+    cache.put("c", 3);
+    TEST_ASSERT(cache.contains("a"));
+    TEST_ASSERT(!cache.contains("b"));
+    TEST_ASSERT(cache.contains("c"));
+    std::cout << "  [PASS] testLruCacheEvictsLeastRecentlyUsed\n";
+}
+
 int run_memory_store_tests() {
     std::cout << "Memory Store Tests:\n";
     RESET_FAILURES();
@@ -102,6 +142,7 @@ int run_memory_store_tests() {
     testChunkCrud();
     testFtsSearch();
     testEmbeddingCache();
+    testLruCacheEvictsLeastRecentlyUsed();
     int f = GET_FAILURES();
     if (f == 0) std::cout << "All memory store tests passed.\n";
     else std::cout << f << " memory store test(s) failed.\n";

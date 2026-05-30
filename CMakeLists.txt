@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
+# 强制指定 Windows 版本为 Win10，避免 httplib 误判
+if(WIN32)
+    add_definitions(-D_WIN32_WINNT=0x0A00)
+endif()
 project(ClawLite VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -31,6 +35,7 @@ target_compile_definitions(sqlite3 PRIVATE
 add_library(clawlite_core STATIC
     src/core/types.cpp
     src/core/event_bus.cpp
+    src/core/config.cpp
 )
 target_include_directories(clawlite_core PUBLIC include)
 
@@ -49,6 +54,9 @@ target_link_libraries(clawlite_skill PUBLIC clawlite_core)
 
 add_library(clawlite_memory STATIC
     src/memory/context_engine.cpp
+    src/memory/file_tree_index.cpp
+    src/memory/context_budgeter.cpp
+    src/memory/session_summary_tree.cpp
     src/memory/memory_store.cpp
     src/memory/chunker.cpp
     src/memory/embedding.cpp
@@ -90,6 +98,18 @@ if(WIN32)
     target_link_libraries(clawlite PRIVATE ws2_32)
 endif()
 
+add_executable(clawlite_gui src/gui_server.cpp)
+target_include_directories(clawlite_gui PRIVATE third_party/httplib)
+target_link_libraries(clawlite_gui PRIVATE
+    clawlite_core
+    clawlite_skill
+    clawlite_memory
+    clawlite_llm
+)
+if(WIN32)
+    target_link_libraries(clawlite_gui PRIVATE ws2_32)
+endif()
+
 # ── 测试 ──────────────────────────────────────────────────
 
 enable_testing()
@@ -99,10 +119,15 @@ set(TEST_SOURCES
     tests/test_skill_parser.cpp
     tests/test_skill_registry.cpp
     tests/test_memory_store.cpp
+    tests/test_file_tree_index.cpp
+    tests/test_context_budgeter.cpp
+    tests/test_session_summary_tree.cpp
     tests/test_chunker.cpp
     tests/test_search.cpp
     tests/test_session_store.cpp
+    tests/test_compaction.cpp
     tests/test_prompt_builder.cpp
+    tests/test_llm.cpp
 )
 
 add_executable(clawlite_tests ${TEST_SOURCES})
@@ -117,13 +142,3 @@ if(WIN32)
 endif()
 
 add_test(NAME all_tests COMMAND clawlite_tests)
-
-# ── RemoteEmbedding 测试（需要 llama-server 运行）────────
-add_executable(test_remote_embedding tests/test_remote_embedding.cpp)
-target_link_libraries(test_remote_embedding PRIVATE
-    clawlite_core
-    clawlite_memory
-)
-if(WIN32)
-    target_link_libraries(test_remote_embedding PRIVATE ws2_32)
-endif()

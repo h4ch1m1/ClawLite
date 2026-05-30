@@ -78,12 +78,16 @@ public:
 
     // 获取当前状态
     AgentState getState() const { return m_state; }
+    const std::vector<Message>& messages() const { return m_messages; }
+    void resetConversation();
 
 private:
     LlmClient& m_llm;
     ToolExecutor& m_tools;
     IContextEngine* m_memory;
     AgentState m_state = AgentState::Idle;
+    std::vector<Message> m_messages;
+    std::string m_systemPrompt;
 };
 
 } // namespace clawlite

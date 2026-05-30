@@ -32,11 +32,7 @@
 *.app
 
 # IDEs
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+.vscode/
 *.swp
 *.swo
 .idea/
@@ -64,6 +60,11 @@ CTestTestfile.cmake
 # Project Specific
 ClawLite.zip
 openclaw-main/
+.venv/
+benchmark_results*.csv
+benchmark_plots*/
+.clawlite_gui.pid
+clawlite_config.env
 
 # OS
 .DS_Store

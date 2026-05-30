@@ -59,11 +59,20 @@ public:
     // 获取指定文件的块
     std::vector<MemoryChunk> getChunksByFile(const std::string& path);
 
+    // 按 chunk id/hash 获取单个块
+    std::optional<MemoryChunk> getChunkById(const std::string& id);
+
     // ── 全文搜索（FTS5）──────────────────────────────────
 
     // FTS5 全文搜索，返回匹配的 chunk ID 和 BM25 分数
     // 参考：openclaw-main/packages/memory-host-sdk/host/types.ts — search()
     std::vector<std::pair<std::string, double>> ftsSearch(
+        const std::string& query,
+        int limit = 20
+    );
+
+    // 优化版：FTS5 直接 join chunks 表，避免查询后全量扫 chunks。
+    std::vector<SearchResult> ftsSearchDetailed(
         const std::string& query,
         int limit = 20
     );

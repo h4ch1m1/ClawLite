@@ -1,6 +1,9 @@
 ---
 name: hello
 description: A simple greeting skill that says hello in different languages.
+user-invocable: true
+command-dispatch: tool
+command-tool: hello
 metadata:
   openclaw:
     emoji: "👋"
@@ -8,7 +11,7 @@ metadata:
 
 # Hello Skill
 
-When the user says hello or greets you, respond with a greeting in a random language.
+When the user says hello or greets you, call the `hello` tool.
 
 ## Supported Greetings
 

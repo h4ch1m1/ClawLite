@@ -1,9 +1,10 @@
 // ClawLite — 技能解析器测试
-// TODO: A 同学补充测试用例
 
 #include "skill/skill_parser.h"
 #include "test_helpers.h"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 
 using namespace clawlite;
 
@@ -36,8 +37,27 @@ Multiple lines.
 }
 
 void testParseComplete() {
-    // TODO: 创建一个临时 SKILL.md 文件并测试完整解析
-    std::cout << "  [SKIP] testParseComplete (需要文件 I/O)\n";
+    namespace fs = std::filesystem;
+    fs::path temp = fs::temp_directory_path() / "clawlite_skill_test";
+    fs::create_directories(temp);
+
+    fs::path skillFile = temp / "SKILL.md";
+    {
+        std::ofstream out(skillFile);
+        out << "---\n";
+        out << "name: temp-skill\n";
+        out << "description: A temporary skill\n";
+        out << "user-invocable: true\n";
+        out << "---\n";
+        out << "Body text here.\n";
+    }
+
+    auto parsed = SkillParser::parse(skillFile.string());
+    TEST_ASSERT(parsed.has_value());
+    TEST_ASSERT(parsed->name == "temp-skill");
+    TEST_ASSERT(parsed->description == "A temporary skill");
+    TEST_ASSERT(parsed->body.find("Body text here.") != std::string::npos);
+    std::cout << "  [PASS] testParseComplete\n";
 }
 
 int run_skill_parser_tests() {

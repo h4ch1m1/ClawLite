@@ -7,6 +7,8 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <filesystem>
 
 namespace clawlite {
 
