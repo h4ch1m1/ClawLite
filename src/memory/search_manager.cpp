@@ -10,6 +10,7 @@ namespace clawlite {
 namespace {
 
 std::string resultKey(const SearchResult& r) {
+    if (!r.chunkId.empty()) return r.chunkId;
     return r.path + ":" + std::to_string(r.startLine) + ":" + std::to_string(r.endLine);
 }
 
@@ -69,12 +70,16 @@ std::vector<SearchResult> SearchManager::vectorSearch(const std::string& query, 
         double score = cosineSimilarity(queryEmbedding, chunk.embedding);
 
         SearchResult r;
+        r.chunkId = chunk.id;
         r.path = chunk.path;
         r.startLine = chunk.startLine;
         r.endLine = chunk.endLine;
         r.score = score;
         r.vectorScore = score;
         r.snippet = chunk.text.substr(0, 200);
+        r.headingPath = chunk.headingPath;
+        r.tokenCost = chunk.tokenCost;
+        r.sourceLabel = "vector-scan";
         r.source = SearchSource::Memory;
 
         if ((int)heap.size() < topK) {
@@ -95,32 +100,8 @@ std::vector<SearchResult> SearchManager::vectorSearch(const std::string& query, 
 }
 
 std::vector<SearchResult> SearchManager::ftsSearch(const std::string& query, int topK) {
-    std::vector<SearchResult> results;
-    if (query.empty() || topK <= 0) return results;
-
-    auto chunks = m_store.getAllChunks();
-    std::unordered_map<std::string, MemoryChunk> byHash;
-    for (const auto& chunk : chunks) {
-        byHash[chunk.hash] = chunk;
-    }
-
-    auto ftsResults = m_store.ftsSearch(query, topK);
-    for (const auto& pair : ftsResults) {
-        auto it = byHash.find(pair.first);
-        if (it == byHash.end()) continue;
-
-        const auto& chunk = it->second;
-        SearchResult r;
-        r.path = chunk.path;
-        r.startLine = chunk.startLine;
-        r.endLine = chunk.endLine;
-        r.score = pair.second;
-        r.textScore = pair.second;
-        r.snippet = chunk.text.substr(0, 200);
-        r.source = SearchSource::Memory;
-        results.push_back(r);
-    }
-    return results;
+    if (query.empty() || topK <= 0) return {};
+    return m_store.ftsSearchDetailed(query, topK);
 }
 
 std::vector<SearchResult> SearchManager::invertedSearch(const std::string& query, int topK) {
@@ -154,12 +135,16 @@ std::vector<SearchResult> SearchManager::invertedSearch(const std::string& query
     for (const auto& pair : scores) {
         const auto& chunk = chunks[pair.first];
         SearchResult r;
+        r.chunkId = chunk.id;
         r.path = chunk.path;
         r.startLine = chunk.startLine;
         r.endLine = chunk.endLine;
         r.score = pair.second;
         r.textScore = pair.second;
         r.snippet = chunk.text.substr(0, 200);
+        r.headingPath = chunk.headingPath;
+        r.tokenCost = chunk.tokenCost;
+        r.sourceLabel = "inverted-index";
         r.source = SearchSource::Memory;
         results.push_back(r);
     }

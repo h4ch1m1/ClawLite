@@ -49,6 +49,10 @@ void testChunkCrud() {
     chunk.endLine = 10;
     chunk.text = "Hello world";
     chunk.hash = "def456";
+    chunk.id = "chunk-def456";
+    chunk.headingPath = "Doc > Intro";
+    chunk.depth = 2;
+    chunk.tokenCost = 3;
 
     store.upsertChunk(chunk);
     TEST_ASSERT(store.chunkCount() == 1);
@@ -57,6 +61,14 @@ void testChunkCrud() {
     TEST_ASSERT(chunks.size() == 1);
     if (!chunks.empty()) {
         TEST_ASSERT(chunks[0].text == "Hello world");
+        TEST_ASSERT(chunks[0].headingPath == "Doc > Intro");
+        TEST_ASSERT(chunks[0].tokenCost == 3);
+    }
+
+    auto byId = store.getChunkById("chunk-def456");
+    TEST_ASSERT(byId.has_value());
+    if (byId.has_value()) {
+        TEST_ASSERT(byId->headingPath == "Doc > Intro");
     }
 
     store.removeChunksByFile("test.md");
@@ -76,11 +88,17 @@ void testFtsSearch() {
     chunk.endLine = 1;
     chunk.text = "needle haystack";
     chunk.hash = "fts1";
+    chunk.id = "fts1";
+    chunk.headingPath = "Search";
     store.upsertChunk(chunk);
 
     auto results = store.ftsSearch("needle", 5);
     TEST_ASSERT(!results.empty());
     TEST_ASSERT(results[0].first == "fts1");
+    auto detailed = store.ftsSearchDetailed("needle", 5);
+    TEST_ASSERT(!detailed.empty());
+    TEST_ASSERT(detailed[0].chunkId == "fts1");
+    TEST_ASSERT(detailed[0].headingPath == "Search");
 
     store.close();
     std::cout << "  [PASS] testFtsSearch\n";

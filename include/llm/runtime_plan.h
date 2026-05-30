@@ -28,6 +28,7 @@ struct RuntimePlanModel {
 struct RuntimePlanPrompt {
     ThinkLevel thinkLevel = ThinkLevel::Medium;
     std::string systemPromptOverride;  // 可选：覆盖自动生成的系统提示
+    int contextTokenBudget = 12000;     // 给 Harness 组装历史和记忆的预算
 };
 
 struct RuntimePlanTransport {

@@ -7,9 +7,10 @@ namespace clawlite {
 
 RuntimePlan RuntimePlan::defaultPlan() {
     RuntimePlan plan;
-    plan.model.provider = "openai";
-    plan.model.modelId = "gpt-4o-mini";
+    plan.model.provider = "mimo";
+    plan.model.modelId = "mimo-v2.5-pro";
     plan.prompt.thinkLevel = ThinkLevel::Medium;
+    plan.prompt.contextTokenBudget = 12000;
     plan.transport.temperature = 0.7;
     plan.transport.maxTokens = 4096;
     plan.transport.timeoutMs = 60000;
@@ -28,7 +29,8 @@ bool RuntimePlan::validate() const {
         && transport.temperature >= 0
         && transport.temperature <= 2
         && transport.maxTokens > 0
-        && transport.maxToolRounds > 0;
+        && transport.maxToolRounds > 0
+        && prompt.contextTokenBudget > 0;
 }
 
 } // namespace clawlite

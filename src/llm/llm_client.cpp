@@ -325,9 +325,13 @@ LlmResponse LlmClient::chat(
     std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
     cmd << "curl -sS --max-time " << (m_config.timeoutMs / 1000)
+#ifdef _WIN32
+        << " --ssl-no-revoke"
+#endif
         << " -X POST " << quoteShellArg(endpoint)
         << " -H " << quoteShellArg("Content-Type: application/json")
         << " -H " << quoteShellArg("Authorization: Bearer " + m_config.apiKey)
+        << (m_config.sendApiKeyHeader ? " -H " + quoteShellArg("api-key: " + m_config.apiKey) : "")
         << " --data-binary @" << quoteShellArg(requestPath);
 
     int exitCode = 0;
@@ -380,9 +384,13 @@ LlmResponse LlmClient::chatStream(
     std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
     cmd << "curl -sS --no-buffer --max-time " << (m_config.timeoutMs / 1000)
+#ifdef _WIN32
+        << " --ssl-no-revoke"
+#endif
         << " -X POST " << quoteShellArg(endpoint)
         << " -H " << quoteShellArg("Content-Type: application/json")
         << " -H " << quoteShellArg("Authorization: Bearer " + m_config.apiKey)
+        << (m_config.sendApiKeyHeader ? " -H " + quoteShellArg("api-key: " + m_config.apiKey) : "")
         << " --data-binary @" << quoteShellArg(requestPath);
 
     int exitCode = 0;
@@ -407,7 +415,10 @@ std::string LlmClient::buildRequestJson(
     out << "{";
     out << "\"model\":\"" << jsonEscape(m_config.model) << "\",";
     out << "\"temperature\":" << m_config.temperature << ",";
-    out << "\"max_tokens\":" << m_config.maxTokens << ",";
+    const std::string maxField = m_config.maxTokensField.empty()
+        ? "max_tokens"
+        : m_config.maxTokensField;
+    out << "\"" << jsonEscape(maxField) << "\":" << m_config.maxTokens << ",";
     out << "\"stream\":" << (stream ? "true" : "false") << ",";
     out << "\"messages\":[";
 

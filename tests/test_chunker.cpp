@@ -67,6 +67,23 @@ void testCjkCharacterMode() {
     std::cout << "  [PASS] testCjkCharacterMode\n";
 }
 
+void testMarkdownHeadingPath() {
+    std::string content = "# Root\nintro\n## Child\nbody line\n";
+    auto chunks = Chunker::chunkMarkdown("headings.md", content);
+    TEST_ASSERT(!chunks.empty());
+    bool foundChild = false;
+    for (const auto& chunk : chunks) {
+        if (chunk.headingPath.find("Root > Child") != std::string::npos) {
+            foundChild = true;
+            TEST_ASSERT(chunk.depth == 2);
+            TEST_ASSERT(!chunk.parentId.empty());
+            TEST_ASSERT(chunk.tokenCost > 0);
+        }
+    }
+    TEST_ASSERT(foundChild);
+    std::cout << "  [PASS] testMarkdownHeadingPath\n";
+}
+
 int run_chunker_tests() {
     std::cout << "Chunker Tests:\n";
     RESET_FAILURES();
@@ -75,6 +92,7 @@ int run_chunker_tests() {
     testSmallContent();
     testOverlap();
     testCjkCharacterMode();
+    testMarkdownHeadingPath();
     int f = GET_FAILURES();
     if (f == 0) std::cout << "All chunker tests passed.\n";
     else std::cout << f << " chunker test(s) failed.\n";

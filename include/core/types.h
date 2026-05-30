@@ -53,6 +53,7 @@ struct Tool {
 enum class SearchSource { Memory, Session };
 
 struct SearchResult {
+    std::string chunkId;     // chunk 主键，用于快速回表/去重
     std::string path;        // 文件路径
     int startLine = 0;
     int endLine = 0;
@@ -60,17 +61,25 @@ struct SearchResult {
     double vectorScore = 0.0;
     double textScore = 0.0;
     std::string snippet;     // 匹配的文本片段
+    std::string headingPath; // Markdown 标题路径
+    std::string sourceLabel; // 展示用来源标签
+    int tokenCost = 0;       // 估算 token 成本
     SearchSource source = SearchSource::Memory;
 };
 
 // ── 分块 ──────────────────────────────────────────────────
 
 struct MemoryChunk {
+    std::string id;          // 稳定块 ID：path + line range + hash
+    std::string parentId;    // Markdown 标题树父节点/标题路径 hash
     std::string path;        // 来源文件路径
     int startLine = 0;
     int endLine = 0;
     std::string text;        // 块的文本内容
     std::string hash;        // 内容 hash（用于去重/缓存）
+    std::string headingPath; // 例如：README > 模块 B > 检索
+    int depth = 0;           // Markdown 标题层级，普通文本为 0
+    int tokenCost = 0;       // 估算 token 成本
     std::vector<double> embedding;  // 向量嵌入（可选）
 };
 

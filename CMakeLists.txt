@@ -54,6 +54,9 @@ target_link_libraries(clawlite_skill PUBLIC clawlite_core)
 
 add_library(clawlite_memory STATIC
     src/memory/context_engine.cpp
+    src/memory/file_tree_index.cpp
+    src/memory/context_budgeter.cpp
+    src/memory/session_summary_tree.cpp
     src/memory/memory_store.cpp
     src/memory/chunker.cpp
     src/memory/embedding.cpp
@@ -116,6 +119,9 @@ set(TEST_SOURCES
     tests/test_skill_parser.cpp
     tests/test_skill_registry.cpp
     tests/test_memory_store.cpp
+    tests/test_file_tree_index.cpp
+    tests/test_context_budgeter.cpp
+    tests/test_session_summary_tree.cpp
     tests/test_chunker.cpp
     tests/test_search.cpp
     tests/test_session_store.cpp
@@ -136,13 +142,3 @@ if(WIN32)
 endif()
 
 add_test(NAME all_tests COMMAND clawlite_tests)
-
-# ── RemoteEmbedding 测试（需要 llama-server 运行）────────
-add_executable(test_remote_embedding tests/test_remote_embedding.cpp)
-target_link_libraries(test_remote_embedding PRIVATE
-    clawlite_core
-    clawlite_memory
-)
-if(WIN32)
-    target_link_libraries(test_remote_embedding PRIVATE ws2_32)
-endif()

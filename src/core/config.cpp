@@ -1,9 +1,12 @@
 #include "core/config.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <stdexcept>
 #include <unordered_map>
+#include <vector>
+#include <cctype>
 
 namespace clawlite {
 namespace {
@@ -37,9 +40,7 @@ std::string unquote(std::string value) {
 
 std::unordered_map<std::string, std::string> loadKeyValueFile(const std::string& path) {
     std::ifstream in(path);
-    if (!in) {
-        throw std::runtime_error("missing config file: " + path);
-    }
+    if (!in) return {};
 
     std::unordered_map<std::string, std::string> values;
     std::string line;
@@ -55,31 +56,91 @@ std::unordered_map<std::string, std::string> loadKeyValueFile(const std::string&
     return values;
 }
 
-std::string requireValue(const std::unordered_map<std::string, std::string>& values,
-                         const std::string& key) {
-    auto it = values.find(key);
-    if (it == values.end() || it->second.empty()) {
-        throw std::runtime_error("missing required config key: " + key);
+void overlayEnv(std::unordered_map<std::string, std::string>& values,
+                const std::vector<std::string>& keys) {
+    for (const auto& key : keys) {
+        const char* raw = std::getenv(key.c_str());
+        if (raw && *raw) values[key] = raw;
     }
+}
+
+std::string valueOr(const std::unordered_map<std::string, std::string>& values,
+                    const std::string& key,
+                    const std::string& fallback) {
+    auto it = values.find(key);
+    if (it == values.end() || it->second.empty()) return fallback;
     return it->second;
+}
+
+int intValueOr(const std::unordered_map<std::string, std::string>& values,
+               const std::string& key,
+               int fallback) {
+    auto it = values.find(key);
+    if (it == values.end() || it->second.empty()) return fallback;
+    return std::stoi(it->second);
+}
+
+double doubleValueOr(const std::unordered_map<std::string, std::string>& values,
+                     const std::string& key,
+                     double fallback) {
+    auto it = values.find(key);
+    if (it == values.end() || it->second.empty()) return fallback;
+    return std::stod(it->second);
+}
+
+bool boolValueOr(const std::unordered_map<std::string, std::string>& values,
+                 const std::string& key,
+                 bool fallback) {
+    auto it = values.find(key);
+    if (it == values.end() || it->second.empty()) return fallback;
+    std::string v = it->second;
+    std::transform(v.begin(), v.end(), v.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return v == "1" || v == "true" || v == "yes" || v == "on";
 }
 
 } // namespace
 
 AppConfig loadAppConfig(const std::string& path) {
     auto values = loadKeyValueFile(path);
+    overlayEnv(values, {
+        "CLAWLITE_BASE_URL",
+        "CLAWLITE_API_KEY",
+        "CLAWLITE_MODEL",
+        "CLAWLITE_TEMPERATURE",
+        "CLAWLITE_MAX_TOKENS",
+        "CLAWLITE_TIMEOUT_MS",
+        "CLAWLITE_MAX_TOKENS_FIELD",
+        "CLAWLITE_SEND_API_KEY_HEADER",
+        "CLAWLITE_CONTEXT_TOKEN_BUDGET",
+        "CLAWLITE_CHUNK_TOKENS",
+        "CLAWLITE_OVERLAP_TOKENS",
+        "CLAWLITE_SUMMARY_GROUP_SIZE",
+        "CLAWLITE_KEEP_RECENT_TURNS",
+        "CLAWLITE_FILE_CACHE_CAPACITY",
+        "CLAWLITE_WORKSPACE_DIR",
+        "CLAWLITE_DATA_DIR"
+    });
 
     AppConfig config;
-    config.llm.baseUrl = requireValue(values, "CLAWLITE_BASE_URL");
-    config.llm.apiKey = requireValue(values, "CLAWLITE_API_KEY");
-    config.llm.model = requireValue(values, "CLAWLITE_MODEL");
+    config.llm.baseUrl = valueOr(values, "CLAWLITE_BASE_URL", config.llm.baseUrl);
+    config.llm.apiKey = valueOr(values, "CLAWLITE_API_KEY", config.llm.apiKey);
+    config.llm.model = valueOr(values, "CLAWLITE_MODEL", config.llm.model);
+    config.llm.temperature = doubleValueOr(values, "CLAWLITE_TEMPERATURE", config.llm.temperature);
+    config.llm.maxTokens = intValueOr(values, "CLAWLITE_MAX_TOKENS", config.llm.maxTokens);
+    config.llm.timeoutMs = intValueOr(values, "CLAWLITE_TIMEOUT_MS", config.llm.timeoutMs);
+    config.llm.maxTokensField = valueOr(values, "CLAWLITE_MAX_TOKENS_FIELD", config.llm.maxTokensField);
+    config.llm.sendApiKeyHeader = boolValueOr(values, "CLAWLITE_SEND_API_KEY_HEADER", config.llm.sendApiKeyHeader);
 
-    auto itTemp = values.find("CLAWLITE_TEMPERATURE");
-    if (itTemp != values.end()) config.llm.temperature = std::stod(itTemp->second);
-    auto itMax = values.find("CLAWLITE_MAX_TOKENS");
-    if (itMax != values.end()) config.llm.maxTokens = std::stoi(itMax->second);
-    auto itTimeout = values.find("CLAWLITE_TIMEOUT_MS");
-    if (itTimeout != values.end()) config.llm.timeoutMs = std::stoi(itTimeout->second);
+    config.memory.contextTokenBudget = intValueOr(values, "CLAWLITE_CONTEXT_TOKEN_BUDGET", config.memory.contextTokenBudget);
+    config.memory.chunkTokens = intValueOr(values, "CLAWLITE_CHUNK_TOKENS", config.memory.chunkTokens);
+    config.memory.overlapTokens = intValueOr(values, "CLAWLITE_OVERLAP_TOKENS", config.memory.overlapTokens);
+    config.memory.summaryGroupSize = intValueOr(values, "CLAWLITE_SUMMARY_GROUP_SIZE", config.memory.summaryGroupSize);
+    config.memory.keepRecentTurns = intValueOr(values, "CLAWLITE_KEEP_RECENT_TURNS", config.memory.keepRecentTurns);
+    config.memory.fileCacheCapacity = intValueOr(values, "CLAWLITE_FILE_CACHE_CAPACITY", config.memory.fileCacheCapacity);
+    config.workspaceDir = valueOr(values, "CLAWLITE_WORKSPACE_DIR", config.workspaceDir);
+    config.dataDir = valueOr(values, "CLAWLITE_DATA_DIR", config.dataDir);
     return config;
 }
 

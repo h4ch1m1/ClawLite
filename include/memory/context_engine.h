@@ -16,6 +16,25 @@ namespace clawlite {
 struct AssembleResult {
     std::vector<Message> messages;   // 组装好的消息列表
     int estimatedTokens = 0;         // 估算的 token 数
+    std::vector<std::string> trace;  // 展示：上下文由哪些数据结构节点组成
+};
+
+struct MemoryStats {
+    int indexedFiles = 0;
+    int indexedChunks = 0;
+    int treeNodes = 0;
+    int summaryNodes = 0;
+    int cacheHits = 0;
+    int cacheMisses = 0;
+    std::string rootHash;
+};
+
+struct ContextEngineOptions {
+    int chunkTokens = 220;
+    int overlapTokens = 50;
+    int summaryGroupSize = 6;
+    int keepRecentTurns = 4;
+    int fileCacheCapacity = 32;
 };
 
 class IContextEngine {
@@ -35,6 +54,9 @@ public:
     // 将文件内容索引到记忆系统
     // 参考：openclaw-main/packages/memory-host-sdk/host/internal.ts — listMemoryFiles + chunkMarkdown
     virtual void indexFile(const std::string& filePath) = 0;
+
+    // 索引单文件或目录。目录会先构建 FileTree/Merkle hash，再只索引变化文件。
+    virtual void indexPath(const std::string& path) = 0;
 
     // 删除文件索引
     virtual void removeFile(const std::string& filePath) = 0;
@@ -63,6 +85,9 @@ public:
     //   4. 裁剪到 token 预算内
     virtual AssembleResult assemble(int tokenBudget) = 0;
 
+    // 用显式 query 组装上下文，供 CLI /context 演示使用。
+    virtual AssembleResult assembleForQuery(const std::string& query, int tokenBudget) = 0;
+
     // ── 上下文压缩 ────────────────────────────────────────
 
     // 压缩上下文（当 token 超限时调用）
@@ -90,9 +115,11 @@ public:
     // 获取索引的文件/块数量（用于状态显示）
     virtual int getIndexedFileCount() const = 0;
     virtual int getIndexedChunkCount() const = 0;
+    virtual MemoryStats getMemoryStats() const = 0;
 };
 
 // 创建默认上下文引擎实例
 std::unique_ptr<IContextEngine> createContextEngine();
+std::unique_ptr<IContextEngine> createContextEngine(const ContextEngineOptions& options);
 
 } // namespace clawlite

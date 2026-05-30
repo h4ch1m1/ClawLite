@@ -31,9 +31,7 @@ std::string PromptBuilder::buildSystemPrompt(
     sections.push_back(buildRuntimeSection(ctx));
     sections.push_back(buildSkillsSection(skills, ctx.skillCharBudget));
 
-    if (memory) {
-        sections.push_back(buildMemorySection(memory, ctx.memoryTokenBudget));
-    }
+    (void)memory;
 
     // 拼接所有段落
     std::string prompt;

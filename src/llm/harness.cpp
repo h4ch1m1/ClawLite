@@ -55,6 +55,16 @@ RunResult AgentHarness::runTurn(
 
     if (m_memory) {
         m_memory->ingest(userMsg);
+        auto assembled = m_memory->assemble(plan.prompt.contextTokenBudget);
+        m_messages.clear();
+        if (!effectiveSystemPrompt.empty()) {
+            m_messages.push_back(Message::system(effectiveSystemPrompt));
+        }
+        m_messages.insert(m_messages.end(), assembled.messages.begin(), assembled.messages.end());
+        if (m_messages.empty() || m_messages.back().role != Role::User ||
+            m_messages.back().content != userInput) {
+            m_messages.push_back(userMsg);
+        }
     }
 
     int roundCount = 0;

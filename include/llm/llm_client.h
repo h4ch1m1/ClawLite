@@ -8,12 +8,14 @@
 namespace clawlite {
 
 struct LlmConfig {
-    std::string baseUrl;
+    std::string baseUrl = "https://api.mimo-v2.com/v1";
     std::string apiKey;
-    std::string model;
+    std::string model = "mimo-v2.5-pro";
     double temperature = 0.7;
     int maxTokens = 4096;
     int timeoutMs = 60000;
+    std::string maxTokensField = "max_completion_tokens";
+    bool sendApiKeyHeader = true;
 };
 
 using StreamCallback = std::function<void(const std::string& token)>;
