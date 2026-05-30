@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <clocale>
 #include <string>
 
 #ifdef _WIN32
@@ -110,7 +111,9 @@ int main(int argc, char* argv[]) {
     (void)argv;
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
 #endif
+    std::setlocale(LC_ALL, ".UTF-8");
 
     AppConfig appConfig = loadAppConfig();
     std::string workspaceDir = detectWorkspace(appConfig.workspaceDir);
@@ -145,6 +148,13 @@ int main(int argc, char* argv[]) {
         std::cout << "> ";
         std::string input;
         if (!std::getline(std::cin, input)) break;
+        if (input.size() >= 3 &&
+            static_cast<unsigned char>(input[0]) == 0xEF &&
+            static_cast<unsigned char>(input[1]) == 0xBB &&
+            static_cast<unsigned char>(input[2]) == 0xBF) {
+            input.erase(0, 3);
+        }
+        if (!input.empty() && input.back() == '\r') input.pop_back();
         if (input.empty()) continue;
 
         if (input == "/quit" || input == "/exit") {

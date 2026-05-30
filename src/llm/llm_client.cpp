@@ -16,6 +16,9 @@
 namespace clawlite {
 namespace {
 
+bool readHex4(const std::string& text, size_t pos, unsigned& value);
+void appendUtf8(std::string& out, unsigned codepoint);
+
 struct Json {
     enum class Type { Null, Bool, Number, String, Array, Object };
 
@@ -132,12 +135,28 @@ private:
                     case 'n': v.stringValue += '\n'; break;
                     case 'r': v.stringValue += '\r'; break;
                     case 't': v.stringValue += '\t'; break;
-                    case 'u':
-                        v.stringValue += "\\u";
-                        for (int i = 0; i < 4 && m_pos < m_text.size(); ++i) {
-                            v.stringValue += m_text[m_pos++];
+                    case 'u': {
+                        unsigned codepoint = 0;
+                        if (!readHex4(m_text, m_pos, codepoint)) {
+                            throw std::runtime_error("invalid unicode escape");
                         }
+                        m_pos += 4;
+                        if (codepoint >= 0xD800 && codepoint <= 0xDBFF &&
+                            m_pos + 6 <= m_text.size() &&
+                            m_text[m_pos] == '\\' &&
+                            m_text[m_pos + 1] == 'u') {
+                            unsigned low = 0;
+                            if (readHex4(m_text, m_pos + 2, low) &&
+                                low >= 0xDC00 && low <= 0xDFFF) {
+                                codepoint = 0x10000 +
+                                    ((codepoint - 0xD800) << 10) +
+                                    (low - 0xDC00);
+                                m_pos += 6;
+                            }
+                        }
+                        appendUtf8(v.stringValue, codepoint);
                         break;
+                    }
                     default:
                         v.stringValue += e;
                 }
@@ -214,6 +233,42 @@ std::string jsonEscape(const std::string& input) {
         }
     }
     return out;
+}
+
+int hexValue(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return 10 + c - 'a';
+    if (c >= 'A' && c <= 'F') return 10 + c - 'A';
+    return -1;
+}
+
+bool readHex4(const std::string& text, size_t pos, unsigned& value) {
+    if (pos + 4 > text.size()) return false;
+    value = 0;
+    for (size_t i = 0; i < 4; ++i) {
+        int v = hexValue(text[pos + i]);
+        if (v < 0) return false;
+        value = (value << 4) | static_cast<unsigned>(v);
+    }
+    return true;
+}
+
+void appendUtf8(std::string& out, unsigned codepoint) {
+    if (codepoint <= 0x7F) {
+        out.push_back(static_cast<char>(codepoint));
+    } else if (codepoint <= 0x7FF) {
+        out.push_back(static_cast<char>(0xC0 | (codepoint >> 6)));
+        out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else if (codepoint <= 0xFFFF) {
+        out.push_back(static_cast<char>(0xE0 | (codepoint >> 12)));
+        out.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    } else {
+        out.push_back(static_cast<char>(0xF0 | (codepoint >> 18)));
+        out.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+    }
 }
 
 std::string trimTrailingSlash(std::string url) {
@@ -324,7 +379,7 @@ LlmResponse LlmClient::chat(
 
     std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
-    cmd << "curl -sS --max-time " << (m_config.timeoutMs / 1000)
+    cmd << "curl -sS -L --http1.1 --tlsv1.2 --max-time " << (m_config.timeoutMs / 1000)
 #ifdef _WIN32
         << " --ssl-no-revoke"
 #endif
@@ -332,7 +387,8 @@ LlmResponse LlmClient::chat(
         << " -H " << quoteShellArg("Content-Type: application/json")
         << " -H " << quoteShellArg("Authorization: Bearer " + m_config.apiKey)
         << (m_config.sendApiKeyHeader ? " -H " + quoteShellArg("api-key: " + m_config.apiKey) : "")
-        << " --data-binary @" << quoteShellArg(requestPath);
+        << " --data-binary @" << quoteShellArg(requestPath)
+        << " 2>&1";
 
     int exitCode = 0;
     std::string body = runCommandCapture(cmd.str(), exitCode);
@@ -383,7 +439,7 @@ LlmResponse LlmClient::chatStream(
 
     std::string endpoint = chatCompletionsEndpoint(m_config.baseUrl);
     std::ostringstream cmd;
-    cmd << "curl -sS --no-buffer --max-time " << (m_config.timeoutMs / 1000)
+    cmd << "curl -sS -L --http1.1 --tlsv1.2 --no-buffer --max-time " << (m_config.timeoutMs / 1000)
 #ifdef _WIN32
         << " --ssl-no-revoke"
 #endif
@@ -391,7 +447,8 @@ LlmResponse LlmClient::chatStream(
         << " -H " << quoteShellArg("Content-Type: application/json")
         << " -H " << quoteShellArg("Authorization: Bearer " + m_config.apiKey)
         << (m_config.sendApiKeyHeader ? " -H " + quoteShellArg("api-key: " + m_config.apiKey) : "")
-        << " --data-binary @" << quoteShellArg(requestPath);
+        << " --data-binary @" << quoteShellArg(requestPath)
+        << " 2>&1";
 
     int exitCode = 0;
     std::string raw = runCommandCapture(cmd.str(), exitCode);
